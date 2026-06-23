@@ -1,0 +1,90 @@
+
+services:
+  # ─── ChromaDB Vector Store ──────────────────────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: hkn_chromadb
+    volumes:
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8100:8000"
+    environment:
+      - ALLOW_RESET=true
+      - ANONYMIZED_TELEMETRY=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo >/dev/tcp/localhost/8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ─── FastAPI Backend ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hkn_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/app/chroma_data
+      - ./logs:/app/logs
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - CHROMA_COLLECTION=${CHROMA_COLLECTION:-medical_knowledge}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-prod}
+      - JWT_ALGORITHM=HS256
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - NCBI_API_KEY=${NCBI_API_KEY:-}
+      - NCBI_EMAIL=${NCBI_EMAIL:-user@example.com}
+      - DATABASE_URL=sqlite:///./healthcare_navigator.db
+      - FRONTEND_URL=http://localhost:3000
+      - APP_ENV=${APP_ENV:-production}
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─── Next.js Frontend ───────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hkn_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+# ─── Volumes ─────────────────────────────────────────────
+volumes:
+  chroma_data:
+    driver: local
+  backend_data:
+    driver: local
+
+# ─── Networks ────────────────────────────────────────────
+networks:
+  default:
+    name: hkn_network

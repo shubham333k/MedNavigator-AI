@@ -1,0 +1,46 @@
+# FastAPI & server
+fastapi>=0.115.9
+uvicorn[standard]>=0.30.6
+python-multipart>=0.0.9
+
+# LangChain ecosystem (flexible pins for Python 3.14 compatibility)
+langchain>=0.3.25
+langchain-google-genai>=4.0.0
+langchain-anthropic>=0.3.12
+langchain-openai>=0.3.3
+langchain-community>=0.3.24
+langchain-chroma>=0.2.4
+langgraph>=0.4.1
+
+# Embeddings
+sentence-transformers>=3.4.1
+
+# ChromaDB (>=1.0.13 avoids fastapi exact-pin conflict)
+chromadb>=1.0.13
+
+# Document parsing
+pypdf2>=3.0.1
+python-docx>=1.1.2
+
+# Security (use bcrypt directly — passlib 1.7.4 crashes with bcrypt>=4.0)
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1
+cryptography>=44.0.0
+
+# Data handling
+pydantic>=2.11.3
+pydantic-settings>=2.9.1
+aiohttp>=3.11.16
+httpx>=0.28.1
+
+# Database
+sqlalchemy>=2.0.36
+aiosqlite>=0.20.0
+
+# Utilities
+python-dotenv>=1.1.0
+tenacity>=9.0.0
+
+# Testing
+pytest>=8.3.4
+pytest-asyncio>=0.24.0
