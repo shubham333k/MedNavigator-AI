@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     chroma_host: str = Field(default="localhost")
     chroma_port: int = Field(default=8100)
     chroma_collection: str = Field(default="medical_knowledge")
+    chroma_data_path: str = Field(default="./chroma_data")
 
     # JWT Security
     jwt_secret_key: str = Field(default="dev-secret-key-change-in-production")

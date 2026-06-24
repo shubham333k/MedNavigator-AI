@@ -47,7 +47,7 @@ class VectorStoreManager:
                 # Fallback to persistent local storage
                 logger.info("ChromaDB server not available, using local persistent storage")
                 self._client = chromadb.PersistentClient(
-                    path="./chroma_data",
+                    path=settings.chroma_data_path if hasattr(settings, 'chroma_data_path') else "./chroma_data",
                     settings=ChromaSettings(anonymized_telemetry=False),
                 )
         return self._client
@@ -78,7 +78,7 @@ class VectorStoreManager:
             except Exception as e:
                 logger.warning(f"Failed to connect to ChromaDB server: {e}")
                 self._langchain_store = Chroma(
-                    persist_directory="./chroma_data",
+                    persist_directory=settings.chroma_data_path if hasattr(settings, 'chroma_data_path') else "./chroma_data",
                     collection_name=settings.chroma_collection,
                     embedding_function=embedding_manager.model,
                 )

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: mednavigator-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    disk:
+      name: mednavigator-data
+      mountPath: /home/ubuntu/MedNavigator-AI/backend/data
+      sizeGB: 1
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:////home/ubuntu/MedNavigator-AI/backend/data/healthcare_navigator.db
+      - key: CHROMA_DATA_PATH
+        value: /home/ubuntu/MedNavigator-AI/backend/data/chroma_data
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://mednavigator-frontend.vercel.app
