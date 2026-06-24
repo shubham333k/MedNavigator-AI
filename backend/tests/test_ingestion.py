@@ -15,7 +15,8 @@ def client():
          patch("chromadb.HttpClient"), \
          patch("chromadb.PersistentClient"):
         from app.main import app
-        return TestClient(app)
+        with TestClient(app) as c:
+            yield c
 
 
 def test_health_endpoint(client):
