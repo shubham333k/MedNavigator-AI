@@ -293,6 +293,14 @@ Key endpoints exposed by the FastAPI backend:
 
 ---
 
+## Highlights
+
+- Built healthcare-focused RAG platform using LangGraph and ChromaDB
+- Implemented semantic search over medical knowledge sources
+- Integrated Gemini LLM for context-aware responses
+- Developed full-stack application using FastAPI and Next.js
+- Containerized deployment using Docker
+
 ## 🔒 Security & HIPAA Compliance
 
 MedNavigator-AI is built with enterprise healthcare security requirements in mind:
