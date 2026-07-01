@@ -4,7 +4,6 @@ Retrieves abstracts from NCBI PubMed for ingestion into the knowledge base.
 """
 
 import logging
-import time
 from typing import List, Dict, Any, Optional
 
 import httpx

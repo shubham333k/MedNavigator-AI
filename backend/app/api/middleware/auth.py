@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict
 
 from jose import JWTError, jwt
-from fastapi import Request, HTTPException, Depends
+from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.config import get_settings

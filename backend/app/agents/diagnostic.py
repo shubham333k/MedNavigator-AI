@@ -23,7 +23,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 # LangGraph imports
 from langgraph.graph import StateGraph, END
 
-from app.agents.state import DiagnosticStateDict, DiagnosticState, make_initial_state
+from app.agents.state import DiagnosticStateDict, make_initial_state
 from app.core.llm import get_llm_manager
 from app.core.prompts import (
     DIAGNOSTIC_SYSTEM_PROMPT,
@@ -31,7 +31,7 @@ from app.core.prompts import (
     DIAGNOSTIC_REFINEMENT_TEMPLATE,
 )
 from app.rag.retriever import get_retriever
-from app.models.schemas import DiagnosticResponse, Diagnosis, Citation
+from app.models.schemas import DiagnosticResponse, Diagnosis
 
 logger = logging.getLogger(__name__)
 

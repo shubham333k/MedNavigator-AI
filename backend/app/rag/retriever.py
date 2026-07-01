@@ -59,7 +59,7 @@ class MedicalRetriever:
                     "text": doc_text,
                     "metadata": metadata,
                     "relevance_score": round(relevance_score, 4),
-                    "source_id": f"doc_{i+1}",
+                    "source_id": f"doc_{i + 1}",
                 })
 
         # Sort by relevance score (highest first)

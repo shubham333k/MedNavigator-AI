@@ -7,15 +7,13 @@ import logging
 from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
 
 from app.models.schemas import (
     LoginRequest, TokenResponse, RefreshTokenRequest,
     RegisterRequest, UserResponse, UserRole,
 )
-from app.models.database import get_db
 from app.security.rbac import (
-    authenticate_user, create_user, get_user_by_email, check_permission,
+    authenticate_user, create_user, get_user_by_email,
 )
 from app.api.middleware.auth import (
     create_access_token, create_refresh_token, decode_token, require_auth,

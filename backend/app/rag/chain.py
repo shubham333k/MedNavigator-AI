@@ -21,7 +21,7 @@ from app.core.prompts import (
 )
 from app.rag.retriever import get_retriever
 from app.rag.citations import extract_citations
-from app.models.schemas import QueryResponse, Citation, QueryType
+from app.models.schemas import QueryResponse, QueryType
 
 logger = logging.getLogger(__name__)
 

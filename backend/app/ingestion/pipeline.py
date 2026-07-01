@@ -3,14 +3,13 @@ Data ingestion pipeline orchestrator.
 Coordinates parsing, chunking, embedding, and indexing of medical documents.
 """
 
-import uuid
 import hashlib
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
 from app.core.vectorstore import get_vectorstore
-from app.ingestion.parsers import ParsedDocument, parse_document
+from app.ingestion.parsers import parse_document
 from app.ingestion.chunker import get_chunker
 from app.ingestion.pubmed import get_pubmed_fetcher
 from app.models.database import IngestedDocument, get_session_factory

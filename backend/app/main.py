@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.models.database import init_db
 from app.models.schemas import HealthResponse
+from app.api.routes import auth, query, diagnostic, ingest
 
 # Configure logging
 logging.basicConfig(
@@ -129,7 +130,6 @@ async def root():
 
 # ─── Register Routers ────────────────────────────────────
 
-from app.api.routes import auth, query, diagnostic, ingest
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(query.router, prefix="/api/query", tags=["Medical Queries"])

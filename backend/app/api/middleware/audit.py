@@ -5,7 +5,6 @@ Logs all API access for compliance reporting.
 
 import logging
 import time
-from datetime import datetime
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware

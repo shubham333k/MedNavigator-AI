@@ -7,13 +7,11 @@ import time
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from app.models.schemas import (
-    IngestDocumentRequest, IngestPubMedRequest, IngestResponse
+    IngestPubMedRequest, IngestResponse
 )
-from app.models.database import get_db
 from app.ingestion.pipeline import get_ingestion_pipeline
 
 logger = logging.getLogger(__name__)

@@ -3,10 +3,8 @@ Data encryption utilities for HIPAA compliance.
 AES-256 encryption for data at rest.
 """
 
-import os
 import base64
 import logging
-from typing import Optional
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
