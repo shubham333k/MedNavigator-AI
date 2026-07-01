@@ -1,5 +1,11 @@
 """
 Role-Based Access Control (RBAC) for the Healthcare Knowledge Navigator.
+
+Blueprint §6.2 defines three roles:
+  Admin     — full system access including ingestion, user management, audit logs
+  Clinician — can query knowledge base and run diagnostic assistant
+  Viewer    — read-only query access (replaces the old 'researcher' role)
+
 Manages user roles, permissions, and default admin seeding.
 """
 
@@ -31,10 +37,11 @@ ROLE_PERMISSIONS = {
         "can_view_audit_logs": False,
         "can_delete_data": False,
     },
-    "researcher": {
+    # Blueprint §6.2 — Viewer: read-only knowledge base access
+    "viewer": {
         "can_query": True,
         "can_diagnose": False,
-        "can_ingest": True,
+        "can_ingest": False,
         "can_manage_users": False,
         "can_view_audit_logs": False,
         "can_delete_data": False,

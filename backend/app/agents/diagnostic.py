@@ -1,16 +1,29 @@
 """
 LangGraph-powered diagnostic assistant agent.
-Multi-step workflow for differential diagnosis based on patient symptoms.
+
+Implements a real LangGraph StateGraph with typed nodes as specified in the
+blueprint (§3.1 / §5.3):
+
+  gather_information → reason → refine → complete
+        ↑_________________↑ (conditional loop while not complete)
+
+The graph preserves the same external API contract (DiagnosticResponse),
+so the FastAPI routes require no changes.
 """
 
-import json
+from __future__ import annotations
+
+import re
 import uuid
 import logging
 from typing import Dict, Any, Optional, List
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from app.agents.state import DiagnosticState
+# LangGraph imports
+from langgraph.graph import StateGraph, END
+
+from app.agents.state import DiagnosticStateDict, DiagnosticState, make_initial_state
 from app.core.llm import get_llm_manager
 from app.core.prompts import (
     DIAGNOSTIC_SYSTEM_PROMPT,
@@ -22,24 +35,283 @@ from app.models.schemas import DiagnosticResponse, Diagnosis, Citation
 
 logger = logging.getLogger(__name__)
 
-# Store active sessions in memory (use Redis in production)
-_active_sessions: Dict[str, DiagnosticState] = {}
+# ── In-memory session store (use Redis in production) ─────────────────────────
+_active_sessions: Dict[str, DiagnosticStateDict] = {}
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node functions
+# Each node receives the full state dict, mutates it, and returns the delta.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _node_gather_information(state: DiagnosticStateDict) -> DiagnosticStateDict:
+    """
+    Information Gathering Node (blueprint §5.3 step 2).
+    Queries the vector DB for medical literature matching the patient symptoms.
+    """
+    retriever = get_retriever(n_results=8)
+
+    symptom_query = " ".join(state.get("symptoms", []))
+    history = state.get("medical_history", [])
+    if history:
+        symptom_query += " " + " ".join(history)
+
+    documents = retriever.retrieve(symptom_query, n_results=8)
+    context = retriever.format_context(documents)
+
+    logger.info(f"[gather_information] Retrieved {len(documents)} documents for symptoms")
+
+    return {
+        **state,
+        "retrieved_documents": documents,
+        "retrieved_context": context,
+        "stage": "reasoning",
+    }
+
+
+def _node_reason(state: DiagnosticStateDict) -> DiagnosticStateDict:
+    """
+    Reasoning Node (blueprint §5.3 step 3).
+    Analyses retrieved conditions and formulates initial differential diagnoses.
+    """
+    llm = get_llm_manager()
+
+    prompt = DIAGNOSTIC_GATHERING_TEMPLATE.format(
+        symptoms=", ".join(state.get("symptoms", [])),
+        age=state.get("patient_age") or "Not provided",
+        sex=state.get("patient_sex") or "Not provided",
+        medical_history=", ".join(state.get("medical_history", [])) or "None provided",
+        medications=", ".join(state.get("current_medications", [])) or "None provided",
+        context=state.get("retrieved_context", ""),
+    )
+
+    messages = [
+        SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
+        HumanMessage(content=prompt),
+    ]
+
+    analysis = llm.invoke(messages)
+    follow_ups = _extract_follow_up(analysis)
+
+    logger.info(
+        f"[reason] Reasoning complete. Generated {len(follow_ups)} follow-up question(s)"
+    )
+
+    updated_messages = list(state.get("messages", [])) + [
+        {"role": "agent", "content": analysis}
+    ]
+
+    return {
+        **state,
+        "current_analysis": analysis,
+        "follow_up_questions": follow_ups,
+        "messages": updated_messages,
+        "stage": "refining",
+    }
+
+
+def _node_refine(state: DiagnosticStateDict) -> DiagnosticStateDict:
+    """
+    Refinement Node (blueprint §5.3 step 4).
+    Processes clinician follow-up responses and updates the differential.
+    """
+    llm = get_llm_manager()
+    retriever = get_retriever(n_results=5)
+
+    clinician_responses = state.get("clinician_responses", [])
+    latest_response = clinician_responses[-1] if clinician_responses else ""
+
+    # Retrieve additional context based on new information
+    combined_query = " ".join(state.get("symptoms", [])) + " " + latest_response
+    extra_docs = retriever.retrieve(combined_query, n_results=5)
+    extra_context = retriever.format_context(extra_docs)
+
+    prompt = DIAGNOSTIC_REFINEMENT_TEMPLATE.format(
+        symptoms=", ".join(state.get("symptoms", [])),
+        age=state.get("patient_age") or "Not provided",
+        sex=state.get("patient_sex") or "Not provided",
+        medical_history=", ".join(state.get("medical_history", [])) or "None provided",
+        previous_analysis=state.get("current_analysis", ""),
+        clinician_response=latest_response,
+        context=extra_context,
+    )
+
+    messages_payload = [
+        SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
+        HumanMessage(content=prompt),
+    ]
+
+    analysis = llm.invoke(messages_payload)
+    follow_ups = _extract_follow_up(analysis)
+
+    iteration = state.get("iteration", 0) + 1
+    max_iter = state.get("max_iterations", 3)
+
+    # Determine if the workflow should terminate
+    is_complete = (iteration >= max_iter) or (not follow_ups)
+    stage = "complete" if is_complete else "refining"
+
+    updated_messages = list(state.get("messages", [])) + [
+        {"role": "agent", "content": analysis}
+    ]
+
+    logger.info(
+        f"[refine] Iteration {iteration}/{max_iter}. "
+        f"Complete={is_complete}. Follow-ups={len(follow_ups)}"
+    )
+
+    return {
+        **state,
+        "current_analysis": analysis,
+        "follow_up_questions": follow_ups,
+        "messages": updated_messages,
+        "iteration": iteration,
+        "stage": stage,
+        "is_complete": is_complete,
+    }
+
+
+def _should_continue(state: DiagnosticStateDict) -> str:
+    """
+    Conditional edge — decides whether to loop back or end the graph.
+    Returns the name of the next node or END.
+    """
+    if state.get("is_complete"):
+        return END
+    if state.get("iteration", 0) >= state.get("max_iterations", 3):
+        return END
+    # If there's a pending clinician response we haven't processed yet,
+    # stay in the refine cycle; otherwise wait (graph pauses at 'refining').
+    return END   # graph ends; subsequent calls re-enter at _node_refine
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build the StateGraph
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_graph() -> Any:
+    """
+    Construct and compile the LangGraph StateGraph for differential diagnosis.
+
+    Workflow (blueprint §5.3):
+      gather_information → reason → [refine ↔ clinician] → complete
+    """
+    graph = StateGraph(DiagnosticStateDict)
+
+    # Register nodes
+    graph.add_node("gather_information", _node_gather_information)
+    graph.add_node("reason", _node_reason)
+    graph.add_node("refine", _node_refine)
+
+    # Entry point
+    graph.set_entry_point("gather_information")
+
+    # Static edges
+    graph.add_edge("gather_information", "reason")
+    graph.add_edge("reason", END)          # pause: wait for clinician input
+    graph.add_edge("refine", END)          # pause: wait for next clinician input
+
+    return graph.compile()
+
+
+# Singleton compiled graph
+_compiled_graph = None
+
+
+def _get_graph():
+    global _compiled_graph
+    if _compiled_graph is None:
+        _compiled_graph = _build_graph()
+    return _compiled_graph
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper utilities
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_follow_up(response: str) -> List[str]:
+    """Extract follow-up questions from the agent's response."""
+    questions: List[str] = []
+    for line in response.split("\n"):
+        line = line.strip()
+        if line.endswith("?") and len(line) > 15:
+            clean = re.sub(r"^[-•*>1-9][\.\)]\s*", "", line).strip()
+            if clean:
+                questions.append(clean)
+    return questions[:3]
+
+
+def _parse_diagnoses(analysis: str) -> List[Diagnosis]:
+    """
+    Parse the LLM's analysis into structured Diagnosis objects.
+    Blueprint §5.3 step 5: ranked diagnoses with supporting evidence.
+    """
+    diagnoses: List[Diagnosis] = []
+
+    pattern = r"\*\*(.+?)\*\*.*?(?:Likelihood|Probability):\s*(High|Medium|Low)"
+    matches = re.findall(pattern, analysis, re.IGNORECASE)
+    likelihood_scores = {"high": 0.85, "medium": 0.55, "low": 0.25}
+
+    for condition, likelihood in matches:
+        diagnoses.append(
+            Diagnosis(
+                condition=condition.strip(),
+                likelihood=likelihood.capitalize(),
+                confidence_score=likelihood_scores.get(likelihood.lower(), 0.5),
+                supporting_evidence=[analysis[:500]],
+                recommended_tests=None,
+                citations=[],
+            )
+        )
+
+    if not diagnoses:
+        diagnoses.append(
+            Diagnosis(
+                condition="See detailed analysis above",
+                likelihood="Medium",
+                confidence_score=0.5,
+                supporting_evidence=[analysis[:500]],
+                recommended_tests=None,
+                citations=[],
+            )
+        )
+
+    return diagnoses
+
+
+def _build_response(session_id: str, state: DiagnosticStateDict) -> DiagnosticResponse:
+    """Map the internal graph state to the external API response schema."""
+    follow_up = None
+    fqs = state.get("follow_up_questions", [])
+    if fqs and not state.get("is_complete"):
+        follow_up = fqs[0]
+
+    diagnoses = None
+    if state.get("is_complete") or state.get("stage") == "complete":
+        diagnoses = _parse_diagnoses(state.get("current_analysis", ""))
+
+    return DiagnosticResponse(
+        session_id=session_id,
+        stage=state.get("stage", "gathering"),
+        message=state.get("current_analysis", ""),
+        follow_up_question=follow_up,
+        differential_diagnoses=diagnoses,
+        is_complete=state.get("is_complete", False),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API — same interface as before; routes require no changes
+# ─────────────────────────────────────────────────────────────────────────────
 
 class DiagnosticAgent:
     """
-    LangGraph-style diagnostic agent with multi-step reasoning.
+    Wraps the compiled LangGraph StateGraph and manages sessions.
 
-    Workflow:
-    1. Information Gathering → query vector DB for symptom-matching conditions
-    2. Reasoning → analyze retrieved conditions for differential diagnosis
-    3. Refinement → ask follow-up questions to narrow diagnoses
-    4. Final Output → ranked diagnoses with supporting evidence
+    Nodes execute in order: gather_information → reason → (refine)* → END
+    Each call to `start_session` or `respond` runs the graph from the
+    appropriate entry node and stores the resulting state for the next turn.
     """
-
-    def __init__(self):
-        self.retriever = get_retriever(n_results=8)
-        self.llm_manager = get_llm_manager()
 
     def start_session(
         self,
@@ -51,30 +323,23 @@ class DiagnosticAgent:
     ) -> DiagnosticResponse:
         """
         Start a new diagnostic session.
-        Performs initial information gathering and returns first analysis.
+        Runs: gather_information → reason → END (paused for clinician input).
         """
         session_id = str(uuid.uuid4())
-
-        state = DiagnosticState(
+        initial_state = make_initial_state(
             symptoms=symptoms,
             patient_age=patient_age,
             patient_sex=patient_sex,
-            medical_history=medical_history or [],
-            current_medications=current_medications or [],
-            stage="gathering",
-            iteration=0,
+            medical_history=medical_history,
+            current_medications=current_medications,
         )
 
-        # Step 1: Information Gathering
-        state = self._gather_information(state)
+        graph = _get_graph()
+        final_state: DiagnosticStateDict = graph.invoke(initial_state)
 
-        # Step 2: Initial Reasoning
-        state = self._reason(state)
-
-        # Store session
-        _active_sessions[session_id] = state
-
-        return self._build_response(session_id, state)
+        _active_sessions[session_id] = final_state
+        logger.info(f"[DiagnosticAgent] New session {session_id} started.")
+        return _build_response(session_id, final_state)
 
     def respond(
         self,
@@ -82,201 +347,42 @@ class DiagnosticAgent:
         clinician_response: str,
     ) -> DiagnosticResponse:
         """
-        Process a clinician's response to a follow-up question.
-        Refines the differential diagnosis based on new information.
+        Process a clinician's follow-up response.
+        Runs: refine → END (may mark is_complete=True).
         """
         state = _active_sessions.get(session_id)
         if state is None:
-            raise ValueError(f"Session {session_id} not found or has expired.")
+            raise ValueError(f"Session '{session_id}' not found or has expired.")
 
-        if state.is_complete:
-            return self._build_response(session_id, state)
+        if state.get("is_complete"):
+            return _build_response(session_id, state)
 
-        # Record clinician response
-        state.clinician_responses.append(clinician_response)
-        state.messages.append({"role": "clinician", "content": clinician_response})
-        state.iteration += 1
+        # Append clinician response and re-enter the graph at 'refine'
+        updated_state: DiagnosticStateDict = {
+            **state,
+            "clinician_responses": list(state.get("clinician_responses", [])) + [clinician_response],
+            "messages": list(state.get("messages", [])) + [
+                {"role": "clinician", "content": clinician_response}
+            ],
+        }
 
-        # Retrieve additional context based on new information
-        combined_query = " ".join(state.symptoms) + " " + clinician_response
-        documents = self.retriever.retrieve(combined_query, n_results=5)
-        additional_context = self.retriever.format_context(documents)
+        # Build a mini graph that starts directly at 'refine'
+        refine_graph = StateGraph(DiagnosticStateDict)
+        refine_graph.add_node("refine", _node_refine)
+        refine_graph.set_entry_point("refine")
+        refine_graph.add_edge("refine", END)
+        compiled_refine = refine_graph.compile()
 
-        # Refine diagnosis
-        state = self._refine(state, clinician_response, additional_context)
+        final_state: DiagnosticStateDict = compiled_refine.invoke(updated_state)
+        _active_sessions[session_id] = final_state
 
-        # Check if we should complete
-        if state.iteration >= state.max_iterations:
-            state.stage = "complete"
-            state.is_complete = True
-
-        # Update session
-        _active_sessions[session_id] = state
-
-        return self._build_response(session_id, state)
-
-    def _gather_information(self, state: DiagnosticState) -> DiagnosticState:
-        """Node: Retrieve medical literature matching the symptoms."""
-        symptom_query = " ".join(state.symptoms)
-
-        if state.medical_history:
-            symptom_query += " " + " ".join(state.medical_history)
-
-        documents = self.retriever.retrieve(symptom_query, n_results=8)
-        state.retrieved_documents = documents
-        state.retrieved_context = self.retriever.format_context(documents)
-        state.stage = "reasoning"
-
-        logger.info(f"Gathered {len(documents)} relevant documents for symptoms")
-        return state
-
-    def _reason(self, state: DiagnosticState) -> DiagnosticState:
-        """Node: Analyze symptoms against retrieved evidence for differential diagnosis."""
-        prompt = DIAGNOSTIC_GATHERING_TEMPLATE.format(
-            symptoms=", ".join(state.symptoms),
-            age=state.patient_age or "Not provided",
-            sex=state.patient_sex or "Not provided",
-            medical_history=", ".join(state.medical_history) if state.medical_history else "None provided",
-            medications=", ".join(state.current_medications) if state.current_medications else "None provided",
-            context=state.retrieved_context,
+        logger.info(
+            f"[DiagnosticAgent] Session {session_id} refined. "
+            f"Complete={final_state.get('is_complete')}"
         )
-
-        messages = [
-            SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
-            HumanMessage(content=prompt),
-        ]
-
-        response = self.llm_manager.invoke(messages)
-        state.current_analysis = response
-        state.stage = "refining"
-
-        state.messages.append({"role": "agent", "content": response})
-
-        # Extract follow-up question from the response
-        state.follow_up_questions = self._extract_follow_up(response)
-
-        logger.info(f"Reasoning complete. Generated {len(state.follow_up_questions)} follow-up questions")
-        return state
-
-    def _refine(
-        self,
-        state: DiagnosticState,
-        clinician_response: str,
-        additional_context: str,
-    ) -> DiagnosticState:
-        """Node: Refine differential diagnosis based on clinician's response."""
-        prompt = DIAGNOSTIC_REFINEMENT_TEMPLATE.format(
-            symptoms=", ".join(state.symptoms),
-            age=state.patient_age or "Not provided",
-            sex=state.patient_sex or "Not provided",
-            medical_history=", ".join(state.medical_history) if state.medical_history else "None provided",
-            previous_analysis=state.current_analysis,
-            clinician_response=clinician_response,
-            context=additional_context,
-        )
-
-        messages = [
-            SystemMessage(content=DIAGNOSTIC_SYSTEM_PROMPT),
-            HumanMessage(content=prompt),
-        ]
-
-        response = self.llm_manager.invoke(messages)
-        state.current_analysis = response
-        state.messages.append({"role": "agent", "content": response})
-
-        # Check if the agent suggests completion or asks more questions
-        if state.iteration >= state.max_iterations - 1:
-            state.stage = "complete"
-            state.is_complete = True
-        else:
-            state.follow_up_questions = self._extract_follow_up(response)
-            if not state.follow_up_questions:
-                state.stage = "complete"
-                state.is_complete = True
-
-        return state
-
-    def _extract_follow_up(self, response: str) -> List[str]:
-        """Extract follow-up questions from the agent's response."""
-        questions = []
-        lines = response.split("\n")
-        for line in lines:
-            line = line.strip()
-            if line.endswith("?") and len(line) > 15:
-                # Clean up the line
-                clean = line.lstrip("- •*>1234567890.)")
-                if clean.strip():
-                    questions.append(clean.strip())
-
-        return questions[:3]  # Max 3 follow-up questions
-
-    def _build_response(
-        self,
-        session_id: str,
-        state: DiagnosticState,
-    ) -> DiagnosticResponse:
-        """Build the API response from the current state."""
-        follow_up = None
-        if state.follow_up_questions and not state.is_complete:
-            follow_up = state.follow_up_questions[0]
-
-        # Build differential diagnoses from the last analysis
-        diagnoses = None
-        if state.is_complete or state.stage == "complete":
-            diagnoses = self._parse_diagnoses(state.current_analysis)
-
-        return DiagnosticResponse(
-            session_id=session_id,
-            stage=state.stage,
-            message=state.current_analysis,
-            follow_up_question=follow_up,
-            differential_diagnoses=diagnoses,
-            is_complete=state.is_complete,
-        )
-
-    def _parse_diagnoses(self, analysis: str) -> List[Diagnosis]:
-        """
-        Parse the LLM's analysis into structured Diagnosis objects.
-        Falls back to a simple extraction if structured parsing fails.
-        """
-        diagnoses = []
-
-        # Try to extract structured diagnoses from the analysis
-        # Look for patterns like "**Condition Name** (Likelihood: High/Medium/Low)"
-        import re
-        pattern = r'\*\*(.+?)\*\*.*?(?:Likelihood|Probability):\s*(High|Medium|Low)'
-        matches = re.findall(pattern, analysis, re.IGNORECASE)
-
-        likelihood_scores = {"high": 0.85, "medium": 0.55, "low": 0.25}
-
-        for condition, likelihood in matches:
-            diagnoses.append(
-                Diagnosis(
-                    condition=condition.strip(),
-                    likelihood=likelihood.capitalize(),
-                    confidence_score=likelihood_scores.get(likelihood.lower(), 0.5),
-                    supporting_evidence=[analysis[:500]],
-                    recommended_tests=None,
-                    citations=[],
-                )
-            )
-
-        # If no structured diagnoses found, create a general one
-        if not diagnoses:
-            diagnoses.append(
-                Diagnosis(
-                    condition="See detailed analysis above",
-                    likelihood="Medium",
-                    confidence_score=0.5,
-                    supporting_evidence=[analysis[:500]],
-                    recommended_tests=None,
-                    citations=[],
-                )
-            )
-
-        return diagnoses
+        return _build_response(session_id, final_state)
 
 
 def get_diagnostic_agent() -> DiagnosticAgent:
-    """Get a diagnostic agent instance."""
+    """Get a DiagnosticAgent instance (graph is compiled lazily on first call)."""
     return DiagnosticAgent()

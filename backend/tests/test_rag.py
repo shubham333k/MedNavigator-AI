@@ -112,7 +112,7 @@ def test_role_permissions():
     assert not check_permission("clinician", "can_manage_users")
     assert not check_permission("clinician", "can_ingest")
 
-    # Researcher can query and ingest but not diagnose
-    assert check_permission("researcher", "can_query")
-    assert check_permission("researcher", "can_ingest")
-    assert not check_permission("researcher", "can_diagnose")
+    # Viewer can query but not ingest or diagnose
+    assert check_permission("viewer", "can_query")
+    assert not check_permission("viewer", "can_ingest")
+    assert not check_permission("viewer", "can_diagnose")

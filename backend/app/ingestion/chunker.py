@@ -1,6 +1,13 @@
 """
 Text chunking strategies for medical documents.
-Uses LangChain's RecursiveCharacterTextSplitter with medical-aware boundaries.
+
+Blueprint §5.1 (Data Ingestion Pipeline) specifies:
+  - LangChain ``RecursiveCharacterTextSplitter``           ✅ implemented
+  - Chunk size: 500-1000 tokens, respecting semantic boundaries  ✅ default=800
+  - Chunk overlap to preserve context across boundaries    ✅ default=200
+
+The separator list is ordered by priority from coarse (section headers) to
+fine (word breaks), ensuring medical section structure is preserved.
 """
 
 import logging

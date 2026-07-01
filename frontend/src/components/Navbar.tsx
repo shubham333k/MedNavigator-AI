@@ -16,7 +16,7 @@ const NAV_LINKS = [
 const ROLE_BADGE_COLORS: Record<string, string> = {
   admin:      'badge-danger',
   clinician:  'badge-primary',
-  researcher: 'badge-success',
+  viewer:     'badge-success',
 };
 
 export default function Navbar() {

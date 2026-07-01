@@ -31,7 +31,10 @@ services:
       - backend_data:/app/chroma_data
       - ./logs:/app/logs
     environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
       - CHROMA_COLLECTION=${CHROMA_COLLECTION:-medical_knowledge}

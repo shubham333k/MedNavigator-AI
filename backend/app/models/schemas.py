@@ -11,9 +11,13 @@ from enum import Enum
 # ─── Enums ────────────────────────────────────────────────
 
 class UserRole(str, Enum):
+    """
+    Blueprint §6.2 — Role-Based Access Control.
+    Three roles: Admin (full access), Clinician (query + diagnose), Viewer (read-only).
+    """
     ADMIN = "admin"
     CLINICIAN = "clinician"
-    RESEARCHER = "researcher"
+    VIEWER = "viewer"          # replaces the former 'researcher' role
 
 
 class QueryType(str, Enum):
