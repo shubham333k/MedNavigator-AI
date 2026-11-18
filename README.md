@@ -16,7 +16,7 @@
 </p>
 
 <p>
-  <strong>A HIPAA-compliant Retrieval-Augmented Generation (RAG) platform that empowers clinicians to query medical literature, clinical guidelines, and drug databases using natural language.</strong>
+  <strong>A Retrieval-Augmented Generation (RAG) platform that empowers clinicians to query medical literature, clinical guidelines, and drug databases using natural language.</strong>
 </p>
 
 </div>
