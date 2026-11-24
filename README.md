@@ -293,17 +293,17 @@ Open http://localhost:3000 and sign in with the local admin account.
 
 ## 📸 Screenshots
 
-Dashboard screenshots can be added under docs/screenshots/. The table below gives the recommended names and order for project screenshots.
+The following screenshots show the main workflows of the working application.
 
-| Screenshot | File to add | What it should show |
-|---|---|---|
-| 🏠 Dashboard | docs/screenshots/dashboard.png | Main dashboard and navigation |
-| 🔍 Medical Query | docs/screenshots/query.png | Query input, generated answer, and citations |
-| 📚 Knowledge Base | docs/screenshots/knowledge-base.png | Sample data, upload, or PubMed ingestion |
-| 🩺 Diagnostic Assistant | docs/screenshots/diagnostic.png | Symptom input and diagnostic workflow |
-| 🔐 Login | docs/screenshots/login.png | Authentication screen |
+| Screen | Preview |
+|---|---|
+| 🏠 Dashboard | <img src="docs/screenshots/dashboard.png" width="720" alt="MedNavigator dashboard"/> |
+| 🔍 Medical Query | <img src="docs/screenshots/query.png" width="720" alt="Medical query page"/> |
+| 📚 Knowledge Base | <img src="docs/screenshots/knowledge-base.png" width="720" alt="Knowledge base page"/> |
+| 🩺 Diagnostic Assistant | <img src="docs/screenshots/diagnostic.png" width="720" alt="Diagnostic assistant page"/> |
+| 🔐 Login | <img src="docs/screenshots/login.png" width="520" alt="Login page"/> |
 
-> Add the image files with these exact names and they can be embedded directly in this section. See docs/screenshots/README.md for the screenshot checklist.
+Screenshot naming and privacy guidance are documented in docs/screenshots/README.md.
 
 ---
 
