@@ -1,0 +1,3 @@
+Sample clinical reference: hypertension in adults
+
+For adults with hypertension, confirm elevated blood pressure with repeated measurements. Lifestyle measures include reducing dietary sodium, regular aerobic activity, maintaining a healthy weight, and limiting alcohol. Medication selection should consider kidney disease, diabetes, cardiovascular risk, age, and potential drug interactions. ACE inhibitors or ARBs are commonly considered when chronic kidney disease with albuminuria is present. This sample is for local RAG testing only and is not a substitute for current clinical guidelines.
