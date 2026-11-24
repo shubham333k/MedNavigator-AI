@@ -303,7 +303,7 @@ The following screenshots show the main workflows of the working application.
 | 🩺 Diagnostic Assistant | <img src="docs/screenshots/diagnostic.png" width="720" alt="Diagnostic assistant page"/> |
 | 🔐 Login | <img src="docs/screenshots/login.png" width="520" alt="Login page"/> |
 
-Screenshot naming and privacy guidance are documented in docs/screenshots/README.md.
+
 
 ---
 
