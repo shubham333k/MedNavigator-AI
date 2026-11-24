@@ -1,94 +1,232 @@
-# MedNavigator-AI
-
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.165-009688?logo=fastapi&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white)
-![Gemini](https://img.shields.io/badge/Google%20Gemini-3.5%20Flash%20Lite-FF6D00?logo=google&logoColor=white)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-vector%20store-FF4B4B)
-![License](https://img.shields.io/badge/License-MIT-green)
+# 🏥 MedNavigator-AI
 
-**An evidence-grounded clinical knowledge navigator powered by RAG.**
+### <i>AI-Powered Clinical Knowledge Navigation System</i>
 
-Query medical references, ingest documents, retrieve citations, and explore a LangGraph diagnostic workflow through a FastAPI backend and Next.js frontend.
+<p>
+  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/FastAPI-0.165-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js"/>
+  <img src="https://img.shields.io/badge/Google_Gemini-3.5_Flash_Lite-FF6D00?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini"/>
+  <img src="https://img.shields.io/badge/ChromaDB-Vector_Store-FF4B4B?style=for-the-badge" alt="ChromaDB"/>
+  <img src="https://img.shields.io/badge/LangChain-1.5-1C3C3C?style=for-the-badge" alt="LangChain"/>
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/>
+</p>
+
+<strong>A Retrieval-Augmented Generation (RAG) platform that helps clinicians query medical literature, clinical guidelines, and drug references using natural language.</strong>
 
 </div>
 
-## Overview
+---
 
-MedNavigator-AI combines local document embeddings, ChromaDB retrieval, and Google Gemini generation to produce medical knowledge responses grounded in ingested sources. It includes JWT authentication, role-based access control, audit logging, PHI de-identification utilities, document ingestion, PubMed integration, and a browser-based interface.
+## 📋 Table of Contents
 
-> This is an educational project with HIPAA-aligned security controls. It is not HIPAA-certified, a medical device, or a substitute for professional medical advice.
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Quick Start with Docker](#-quick-start-with-docker)
+- [Local Development](#-local-development)
+- [API Reference](#-api-reference)
+- [Screenshots](#-screenshots)
+- [Security and HIPAA-aligned Controls](#-security-and-hipaa-aligned-controls)
+- [Testing](#-testing)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## Features
+---
 
-- Natural-language medical queries with source citations
-- PDF, text, CSV, JSON, sample-data, and PubMed ingestion
-- Local BGE embeddings with CPU fallback and configurable model selection
-- ChromaDB persistent vector storage
-- Gemini Flash LLM integration with configurable model selection
-- JWT access/refresh tokens and Admin, Clinician, and Viewer roles
-- LangGraph diagnostic assistant workflow
-- Next.js 14 frontend with automatic JWT refresh and login redirect
-- SQLite persistence for users, query history, audit records, and ingestion metadata
-- Docker Compose and GitHub Actions configuration
+## 🌟 Overview
 
-## Architecture
+MedNavigator-AI is a full-stack clinical knowledge navigation system built around retrieval-augmented generation. The application retrieves relevant chunks from an indexed medical knowledge base and includes source citations with generated responses.
 
-~~~~text
-Next.js frontend
-        |
-        | REST + JWT
-        v
-FastAPI backend ---- SQLite
-        |
-        +---- ChromaDB <---- BGE embeddings
-        |
-        +---- Google Gemini
-~~~~
+The platform demonstrates authentication, role-based access control, document ingestion, semantic retrieval, citations, and an agentic diagnostic workflow in a healthcare-focused application.
 
-## Project structure
+> **Important:** This project provides HIPAA-aligned security controls for educational purposes. It is not HIPAA-certified, a medical device, or a substitute for professional medical advice.
+
+### Default local account
 
 ~~~~text
-backend/
-  app/
-    api/          API routes and authentication middleware
-    agents/       LangGraph diagnostic workflow
-    core/         settings, embeddings, LLM, and vector store
-    ingestion/    parsers, chunking, PubMed, and pipeline orchestration
-    models/       SQLAlchemy and Pydantic models
-    rag/          retrieval, generation, and citations
-    security/     RBAC, encryption, and de-identification utilities
-  scripts/        local seed scripts
-  sample_data/    small text and PDF fixtures
-  tests/          backend tests
-frontend/
-  src/app/        Next.js pages
-  src/components/ reusable UI components
-  src/lib/        API client and auth helpers
-docker-compose.yml
+Email:    admin@healthcare.nav
+Password: admin123
 ~~~~
 
-## Requirements
+Change the password before using the application outside local development.
 
-- Python 3.12 recommended
-- Node.js 20+
-- npm
-- Google Gemini API key for generated answers
-- Docker Desktop only if using the Docker workflow
+---
 
-## Local development
+## ✨ Key Features
 
-### 1. Configure the backend
+| Feature | Description |
+|---|---|
+| 🔍 **Natural Language Queries** | Ask medical questions in plain language and receive evidence-grounded responses. |
+| 🧠 **RAG Pipeline** | Retrieve relevant document chunks from ChromaDB before generating an answer. |
+| 📚 **Multi-Source Ingestion** | Ingest PDF, text, CSV, JSON, sample data, and PubMed abstracts. |
+| 🧾 **Citation Tracking** | Return source titles, snippets, relevance scores, and links with answers. |
+| 🩺 **Diagnostic Assistant** | Use a LangGraph workflow for symptom-based differential diagnosis. |
+| 🔐 **Authentication** | Use JWT access tokens, refresh tokens, and protected API routes. |
+| 👥 **RBAC** | Support Admin, Clinician, and Viewer roles with permission boundaries. |
+| 🛡️ **Security Controls** | Include PHI de-identification, audit logging, and Fernet encryption support. |
+| 🐳 **Docker Ready** | Run the frontend, backend, and ChromaDB with Docker Compose. |
+| 🧪 **Tested Workflow** | Include backend tests, frontend type checking, and production build validation. |
 
-From the repository root, copy the template into the backend directory:
+---
+
+## 🏗️ Architecture
+
+~~~~text
+┌──────────────────────────────────────────────────────────────┐
+│                        Clinician Browser                     │
+│                Next.js 14 + React + TypeScript               │
+└───────────────────────────────┬──────────────────────────────┘
+                                │ REST API + JWT
+                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                       FastAPI Backend                        │
+│  Auth/RBAC │ Query API │ Ingestion API │ Diagnostic API       │
+└───────────────┬───────────────────────┬──────────────────────┘
+                │                       │
+                ▼                       ▼
+┌────────────────────────┐   ┌─────────────────────────────────┐
+│ SQLite                 │   │ RAG and Agent Layer             │
+│ Users, history, audit  │   │ LangChain + LangGraph            │
+└────────────────────────┘   └───────────────┬─────────────────┘
+                                             │
+                         ┌───────────────────┴──────────────────┐
+                         ▼                                      ▼
+                ┌─────────────────┐                    ┌──────────────────┐
+                │ ChromaDB        │                    │ Google Gemini    │
+                │ Vector retrieval│                    │ 3.5 Flash Lite   │
+                └────────┬────────┘                    └──────────────────┘
+                         ▲
+                         │
+                ┌────────┴────────┐
+                │ BGE Embeddings  │
+                │ CPU/GPU aware   │
+                └─────────────────┘
+~~~~
+
+### Request flow
+
+1. The user authenticates through the Next.js login page.
+2. The frontend attaches the JWT access token to protected API calls.
+3. The backend validates the token and role permissions.
+4. The query is embedded and matched against ChromaDB.
+5. Retrieved documents are injected into the RAG prompt.
+6. Gemini generates a grounded answer.
+7. Citations are extracted and returned to the frontend.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Frontend | Next.js 14, React 18, TypeScript | Clinician-facing dashboard and workflows |
+| Backend | FastAPI, Python 3.12 | REST API and application services |
+| LLM | Google Gemini 3.5 Flash Lite | Response generation |
+| AI orchestration | LangChain 1.5, LangGraph 1.2 | RAG and diagnostic workflows |
+| Embeddings | BAAI/bge-small-en-v1.5 | Local semantic embeddings |
+| Vector database | ChromaDB 1.5 | Persistent similarity search |
+| Relational database | SQLite, SQLAlchemy | Users, audit, history, and ingestion metadata |
+| Authentication | JWT, python-jose | Access and refresh tokens |
+| Security | bcrypt, cryptography | Password hashing and encryption utilities |
+| Document parsing | PyPDF2, python-docx, CSV/JSON parsers | Document extraction |
+| Containerization | Docker, Docker Compose | Local multi-service deployment |
+| CI/CD | GitHub Actions | Automated tests and frontend checks |
+
+---
+
+## 📁 Project Structure
+
+~~~~text
+MedNavigator-AI/
+├── backend/
+│   ├── app/
+│   │   ├── api/             # FastAPI routes and middleware
+│   │   ├── agents/          # LangGraph diagnostic workflow
+│   │   ├── core/            # Settings, LLM, embeddings, ChromaDB
+│   │   ├── ingestion/       # Parsers, chunking, PubMed, pipeline
+│   │   ├── models/          # SQLAlchemy and Pydantic models
+│   │   ├── rag/             # Retrieval, generation, citations
+│   │   └── security/        # RBAC, encryption, de-identification
+│   ├── scripts/             # Seed and maintenance scripts
+│   ├── sample_data/         # Small text and PDF fixtures
+│   ├── tests/               # Pytest suite
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/app/             # Next.js pages
+│   ├── src/components/      # Reusable UI components
+│   ├── src/lib/             # API client and auth helpers
+│   └── package.json
+├── .github/workflows/       # CI/CD workflow
+├── docker-compose.yml
+├── render.yaml
+├── .env.example
+└── README.md
+~~~~
+
+---
+
+## 🚀 Quick Start with Docker
+
+### Prerequisites
+
+- Docker Desktop installed and running
+- A valid Google Gemini API key
+- Git
+
+### 1. Clone and configure
 
 ~~~~powershell
-Copy-Item .env.example backend/.env
+git clone https://github.com/shubham333k/MedNavigator-AI.git
+cd MedNavigator-AI
+Copy-Item .env.example .env
 ~~~~
 
-Edit 'backend/.env' and set at least:
+Edit .env:
+
+~~~~env
+GOOGLE_API_KEY=your_google_ai_studio_key
+JWT_SECRET_KEY=replace-with-a-long-random-secret
+GEMINI_MODEL=gemini-3.5-flash-lite
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+~~~~
+
+### 2. Start the stack
+
+~~~~powershell
+docker compose up --build
+~~~~
+
+### 3. Open the services
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:8000 |
+| Swagger API docs | http://localhost:8000/docs |
+| ChromaDB | http://localhost:8100 |
+
+---
+
+## 💻 Local Development
+
+### Backend
+
+~~~~powershell
+cd backend
+python -m venv venv
+./venv/Scripts/Activate.ps1
+pip install -r requirements.txt
+~~~~
+
+Create backend/.env from the root template and set:
 
 ~~~~env
 GOOGLE_API_KEY=your_google_ai_studio_key
@@ -98,50 +236,31 @@ GEMINI_MODEL=gemini-3.5-flash-lite
 CHROMA_DATA_PATH=./chroma_data
 ~~~~
 
-Keep secrets in '.env' files only. Never commit them.
-
-### 2. Start the backend
+Start the API:
 
 ~~~~powershell
-cd backend
-python -m venv venv
-./venv/Scripts/Activate.ps1
-pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ~~~~
 
-The API is available at http://localhost:8000, with Swagger at http://localhost:8000/docs.
+### Seed sample documents
 
-The application seeds this local admin account on startup if it does not already exist:
-
-~~~~text
-Email:    admin@healthcare.nav
-Password: admin123
-~~~~
-
-Change the password before any non-local deployment.
-
-### 3. Seed sample documents
-
-Stop the backend before running a separate seed process so two processes do not write to the same local Chroma store.
+Stop the backend before running a separate seed process.
 
 ~~~~powershell
-cd backend
-./venv/Scripts/Activate.ps1
 python scripts/seed_sample_data.py
 ~~~~
 
-The first run downloads 'BAAI/bge-small-en-v1.5'; this is expected and the model is cached locally.
+The first run downloads the embedding model and caches it locally.
 
-### 4. Start the frontend
+### Frontend
 
-Create 'frontend/.env.local':
+In frontend/.env.local:
 
 ~~~~env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ~~~~
 
-Then run:
+Start the frontend in another terminal:
 
 ~~~~powershell
 cd frontend
@@ -149,35 +268,64 @@ npm install
 npm run dev
 ~~~~
 
-Open http://localhost:3000, sign in with the local admin account, and use Query, Knowledge Base, or Diagnostic Assistant.
+Open http://localhost:3000 and sign in with the local admin account.
 
-Do not run 'npm run build' at the same time as 'npm run dev'; both use '.next' and can cause temporary asset 404s.
+> Do not run npm run build at the same time as npm run dev; both use the .next directory.
 
-## API overview
+---
 
-| Method | Endpoint | Purpose | Auth |
+## 📡 API Reference
+
+| Method | Endpoint | Description | Authentication |
 |---|---|---|---|
-| GET | /health | Service health | No |
-| POST | /api/auth/login | Create access and refresh tokens | No |
-| POST | /api/auth/refresh | Refresh an access token | No |
-| POST | /api/query/ | Run a cited RAG query | Yes |
+| GET | /health | Service health check | None |
+| POST | /api/auth/login | Login and receive JWT tokens | None |
+| POST | /api/auth/refresh | Refresh an access token | Refresh token |
+| POST | /api/query/ | Run a cited RAG query | JWT |
 | POST | /api/ingest/upload | Upload and ingest a document | Admin |
-| POST | /api/ingest/pubmed | Fetch PubMed abstracts | Admin |
-| POST | /api/ingest/sample-data | Load built-in sample data | Admin |
-| POST | /api/diagnostic/start | Start diagnostic workflow | Yes |
-| POST | /api/diagnostic/respond | Continue diagnostic workflow | Yes |
+| POST | /api/ingest/pubmed | Fetch and ingest PubMed abstracts | Admin |
+| POST | /api/ingest/sample-data | Load built-in sample documents | Admin |
+| POST | /api/diagnostic/start | Start a diagnostic workflow | JWT |
+| POST | /api/diagnostic/respond | Continue a diagnostic workflow | JWT |
+| GET | /docs | Open Swagger UI | None |
 
-## Docker
+---
 
-Configure the root '.env' from '.env.example' for Compose, then run:
+## 📸 Screenshots
 
-~~~~powershell
-docker compose up --build
-~~~~
+Dashboard screenshots can be added under docs/screenshots/. The table below gives the recommended names and order for project screenshots.
 
-The frontend is served at port 3000, the API at port 8000, and ChromaDB at port 8100.
+| Screenshot | File to add | What it should show |
+|---|---|---|
+| 🏠 Dashboard | docs/screenshots/dashboard.png | Main dashboard and navigation |
+| 🔍 Medical Query | docs/screenshots/query.png | Query input, generated answer, and citations |
+| 📚 Knowledge Base | docs/screenshots/knowledge-base.png | Sample data, upload, or PubMed ingestion |
+| 🩺 Diagnostic Assistant | docs/screenshots/diagnostic.png | Symptom input and diagnostic workflow |
+| 🔐 Login | docs/screenshots/login.png | Authentication screen |
 
-## Testing
+> Add the image files with these exact names and they can be embedded directly in this section. See docs/screenshots/README.md for the screenshot checklist.
+
+---
+
+## 🔒 Security and HIPAA-aligned Controls
+
+This project is educational and is not HIPAA-certified.
+
+- JWT authentication with access and refresh tokens
+- Role-based access control for Admin, Clinician, and Viewer users
+- Password hashing with bcrypt
+- PHI de-identification utilities
+- Audit logging middleware
+- Fernet encryption utilities for sensitive fields
+- CORS configuration for local frontend origins
+- Environment-based secret management
+- No API keys or local databases committed to Git
+
+Production deployments still require a formal security review, infrastructure controls, agreements, monitoring, backups, and operational procedures.
+
+---
+
+## 🧪 Testing
 
 Backend:
 
@@ -195,22 +343,42 @@ npm run type-check
 npm run build
 ~~~~
 
-## Troubleshooting
+The repository CI workflow installs dependencies and runs backend and frontend checks automatically.
 
-- 'Authentication required': sign in first. The frontend redirects to '/login' when the access token is missing or expired.
-- 'NOT_FOUND' for a Gemini model: use 'GEMINI_MODEL=gemini-3.5-flash-lite' and restart Uvicorn.
-- '503 UNAVAILABLE' from Gemini: retry after a short wait or choose another available Gemini Flash model.
-- 'Error creating hnsw segment reader: Nothing found on disk': stop the backend before seeding, remove 'backend/chroma_data', seed again, and restart the backend.
-- Empty knowledge base: run 'python backend/scripts/seed_sample_data.py' after activating the backend environment.
+---
 
-## Security notes
+## 🧯 Troubleshooting
 
-- '.env', databases, Chroma data, uploads, logs, virtual environments, and Node build output are ignored by Git.
-- API keys are read server-side from environment variables and are never required by the frontend.
-- The default admin credentials are for local development only.
-- Review authentication, authorization, audit, encryption, infrastructure, and contractual controls before production use.
+| Problem | Solution |
+|---|---|
+| Authentication required | Sign in first. The frontend redirects to /login when the access token is missing or expired. |
+| Gemini NOT_FOUND | Set GEMINI_MODEL=gemini-3.5-flash-lite and restart Uvicorn. |
+| Gemini 503 UNAVAILABLE | Retry after a short wait or choose another available Flash model. |
+| Chroma HNSW disk error | Stop the backend, remove backend/chroma_data, seed again, and restart the backend. |
+| Empty knowledge base | Run python scripts/seed_sample_data.py from backend/. |
+| Slow first ingestion | Expected: the BGE model is downloaded once and cached locally. |
 
-## License
+---
+
+## 🤝 Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes and add tests where appropriate.
+4. Run the backend tests and frontend checks.
+5. Open a pull request with a clear description.
+
+---
+
+## 📄 License
 
 This project is licensed under the MIT License.
+
+<div align="center">
+
+Built for educational demonstration of clinical RAG workflows.
+
+⭐ If this project was useful, consider starring the repository.
+
+</div>
 
